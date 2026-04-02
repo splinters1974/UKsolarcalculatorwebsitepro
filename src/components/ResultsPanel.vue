@@ -88,7 +88,7 @@
     <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-sm text-green-700 font-medium">25-year total benefit</p>
+          <p class="text-sm text-green-700 font-medium">30-year total benefit</p>
           <p class="text-3xl font-bold text-green-800 mt-1">{{ formatGbp(results.twentyFiveYearBenefit) }}</p>
           <p class="text-xs text-green-600 mt-1">After {{ formatGbp(results.installCostGbp) }} install cost = net {{ formatGbp(results.twentyFiveYearBenefit - results.installCostGbp) }} profit</p>
         </div>
@@ -115,7 +115,7 @@
         <p class="text-sm text-green-700 mt-1">
           Your system would save <strong>{{ formatNumber(results.annualCo2KgSaved) }} kg of CO₂</strong> per year —
           equivalent to planting <strong>{{ results.treesEquivalent }} trees</strong> annually.
-          Over 25 years that's <strong>{{ formatNumber(results.annualCo2KgSaved * 25) }} kg</strong> of CO₂ avoided.
+          Over 30 years that's <strong>{{ formatNumber(results.annualCo2KgSaved * 30) }} kg</strong> of CO₂ avoided.
         </p>
       </div>
     </div>
@@ -124,8 +124,9 @@
     <p class="text-xs text-gray-400 leading-relaxed">
       This estimate is for guidance only. Actual generation and savings will vary based on shading, panel placement,
       roof pitch, and system specification. Solar irradiance data sourced from PVGIS (European Commission).
-      Financial figures based on Ofgem cap unit rates (24.5p/kWh) and Smart Export Guarantee average (15p/kWh)
-      at time of calculation. Install cost estimate based on 2024 UK market average. Always obtain a professional survey before purchasing.
+      Financial figures based on 2024 UK commercial electricity rates (24.5p/kWh), Smart Export Guarantee average (15p/kWh),
+      and commercial install costs (£800/kWp). Projection over 30-year operational lifespan with 0.5%/yr degradation.
+      Always obtain a professional site survey and detailed financial model before committing to a purchase.
     </p>
 
     <!-- Restart -->

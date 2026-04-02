@@ -36,7 +36,7 @@
           <span class="font-semibold">{{ results.paybackYears }} years</span>
         </div>
         <div class="border-t border-solar-200 pt-2 flex justify-between">
-          <span class="text-gray-600">25-year benefit</span>
+          <span class="text-gray-600">30-year benefit</span>
           <span class="font-bold text-green-700">{{ formatGbp(results.twentyFiveYearBenefit) }}</span>
         </div>
       </div>

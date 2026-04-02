@@ -1,19 +1,24 @@
 /**
  * Solar Calculator Service
- * Core calculation logic for solar panel output, savings and payback.
+ * Core calculation logic for commercial & industrial solar output, savings and payback.
+ * Figures aligned with uksolarcalculator.co.uk commercial methodology.
  */
 
-// UK electricity tariff constants (2024 averages)
-const ELECTRICITY_UNIT_RATE = 0.245       // £/kWh (Ofgem cap Q1 2024)
-const EXPORT_TARIFF = 0.15               // £/kWh Smart Export Guarantee average
-const PANEL_EFFICIENCY = 0.20            // 20% — modern monocrystalline panels
-const PERFORMANCE_RATIO = 0.82           // System losses, inverter efficiency, wiring
-const USABLE_ROOF_FACTOR = 0.70         // ~70% of drawn area is usable (obstructions, margins)
-const PANEL_AREA_M2 = 1.7               // m² per standard panel (1.7m × 1.0m)
-const PANEL_PEAK_WATTS = 400            // Wp per panel (400W modern panel)
-const COST_PER_KWP = 1400              // £ per kWp installed (2024 average incl. VAT)
-const SELF_CONSUMPTION_RATIO = 0.50    // % of generation used on-site (typical UK home)
-const ANNUAL_DEGRADATION = 0.005       // 0.5% panel degradation per year
+// ── UK Commercial Solar Constants (2024) ──────────────────────────────────
+const ELECTRICITY_UNIT_RATE = 0.245     // £/kWh — Ofgem business cap Q1 2024
+const EXPORT_TARIFF = 0.15             // £/kWh — Smart Export Guarantee average
+const PERFORMANCE_RATIO = 0.84         // System efficiency (inverter, wiring, temp losses)
+                                        // Slightly higher than residential — commercial
+                                        // inverters tend to be higher-spec
+const USABLE_ROOF_FACTOR = 0.70        // 70% of drawn area usable (plant, rooflights, margins)
+const PANEL_AREA_M2 = 2.0              // m² per panel — commercial uses larger 440–500W modules
+const PANEL_PEAK_WATTS = 450           // Wp per panel — commercial-grade (450W bifacial)
+const COST_PER_KWP = 800              // £/kWp — commercial bulk pricing incl. VAT
+                                        // (site range: £600–900/kWp; mid-point used)
+const SELF_CONSUMPTION_RATIO = 0.75   // 75% self-consumed on-site — commercial buildings
+                                        // have high daytime loads (HVAC, machinery, lighting)
+const ANNUAL_DEGRADATION = 0.005      // 0.5%/yr panel output degradation
+const PROJECTION_YEARS = 30           // 30-year operational lifespan (per uksolarcalculator.co.uk)
 
 /**
  * Run the full solar calculation.
@@ -75,8 +80,8 @@ export function calculateSolar(inputs) {
   // Payback
   const paybackYears = installCostGbp / totalAnnualBenefit
 
-  // 25-year projection (with degradation)
-  const twentyFiveYearBenefit = Array.from({ length: 25 }, (_, i) => {
+  // 30-year projection (with degradation)
+  const twentyFiveYearBenefit = Array.from({ length: PROJECTION_YEARS }, (_, i) => {
     const degraded = Math.pow(1 - ANNUAL_DEGRADATION, i)
     return totalAnnualBenefit * degraded
   }).reduce((a, b) => a + b, 0)

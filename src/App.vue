@@ -10,7 +10,8 @@
         </a>
         <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
           <a href="/" class="hover:text-solar-600 transition-colors">Home</a>
-          <a href="/calculator" class="btn-primary text-sm py-1.5 px-4">Start Calculator</a>
+          <a href="/about" class="hover:text-solar-600 transition-colors">About Solar</a>
+          <a href="/calculator" class="btn-primary text-sm py-1.5 px-4">Run Calculator</a>
         </nav>
       </div>
     </header>

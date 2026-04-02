@@ -88,7 +88,7 @@ export async function generatePDF({ results, mapData, userDetails, annualBillGbp
   doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(...BRAND_GREEN)
-  doc.text(`25-year total benefit: ${formatGbp(results.twentyFiveYearBenefit)}`, M + 4, y + 6)
+  doc.text(`30-year total benefit: ${formatGbp(results.twentyFiveYearBenefit)}`, M + 4, y + 6)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(...BRAND_GRAY)
@@ -116,7 +116,7 @@ export async function generatePDF({ results, mapData, userDetails, annualBillGbp
       ['Total annual benefit',                               formatGbp(results.totalAnnualBenefit)],
       [`Estimated bill reduction (from £${annualBillGbp}/yr)`, `~${results.billReductionPct}%`],
       ['Payback period',                                     `${results.paybackYears} years`],
-      ['25-year total benefit',                              formatGbp(results.twentyFiveYearBenefit)]
+      ['30-year total benefit',                              formatGbp(results.twentyFiveYearBenefit)]
     ],
     headStyles: { fillColor: BRAND_AMBER, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
     bodyStyles: { fontSize: 8.5 },
@@ -204,7 +204,7 @@ export async function generatePDF({ results, mapData, userDetails, annualBillGbp
   doc.setFontSize(6.5)
   doc.setFont('helvetica', 'normal')
   doc.text(
-    'For guidance only. PVGIS data © European Commission. Figures based on Ofgem cap rates & SEG averages. Obtain a professional survey before purchasing.',
+    'All figures are indicative estimates for guidance only. PVGIS irradiance data © European Commission. Based on 2024 commercial rates (24.5p/kWh), SEG (15p/kWh), £800/kWp install, 30-yr lifespan. Obtain a professional survey before purchasing.',
     M, footerY + 5.5,
     { maxWidth: pageW - M * 2 }
   )

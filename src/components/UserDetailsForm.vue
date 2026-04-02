@@ -205,7 +205,7 @@ async function submit() {
       'Annual Benefit':          formatGbp(s.totalAnnualBenefit ?? 0),
       'Install Cost':            formatGbp(s.installCostGbp ?? 0),
       'Payback Period':          `${s.paybackYears ?? 0} years`,
-      '25-Year Benefit':         formatGbp(s.twentyFiveYearBenefit ?? 0),
+      '30-Year Benefit':         formatGbp(s.twentyFiveYearBenefit ?? 0),
       'CO₂ Saved/Year':          `${formatNumber(s.annualCo2KgSaved ?? 0)} kg`,
 
       // Metadata
