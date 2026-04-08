@@ -17,6 +17,14 @@ const router = createRouter({
     {
       path: '/calculator',
       component: () => import('./views/CalculatorView.vue')
+    },
+    {
+      path: '/sectors',
+      component: () => import('./views/SectorsView.vue')
+    },
+    {
+      path: '/contact',
+      component: () => import('./views/ContactView.vue')
     }
   ]
 })
