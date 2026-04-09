@@ -1,128 +1,169 @@
 /**
- * Solar Calculator Service
- * Core calculation logic for commercial & industrial solar output, savings and payback.
- * Figures aligned with uksolarcalculator.co.uk commercial methodology.
+ * Solar Calculator Service — Commercial & Industrial
+ * Methodology aligned with uksolarcalculator.co.uk
+ * Supports multiple buildings per site, capital purchase and PPA funding models.
  */
 
-// ── UK Commercial Solar Constants (2024) ──────────────────────────────────
-const ELECTRICITY_UNIT_RATE = 0.245     // £/kWh — Ofgem business cap Q1 2024
-const EXPORT_TARIFF = 0.15             // £/kWh — Smart Export Guarantee average
-const PERFORMANCE_RATIO = 0.84         // System efficiency (inverter, wiring, temp losses)
-                                        // Slightly higher than residential — commercial
-                                        // inverters tend to be higher-spec
-const USABLE_ROOF_FACTOR = 0.70        // 70% of drawn area usable (plant, rooflights, margins)
-const PANEL_AREA_M2 = 2.0              // m² per panel — commercial uses larger 440–500W modules
-const PANEL_PEAK_WATTS = 450           // Wp per panel — commercial-grade (450W bifacial)
-const COST_PER_KWP = 800              // £/kWp — commercial bulk pricing incl. VAT
-                                        // (site range: £600–900/kWp; mid-point used)
-const SELF_CONSUMPTION_RATIO = 0.75   // 75% self-consumed on-site — commercial buildings
-                                        // have high daytime loads (HVAC, machinery, lighting)
-const ANNUAL_DEGRADATION = 0.005      // 0.5%/yr panel output degradation
-const PROJECTION_YEARS = 30           // 30-year operational lifespan (per uksolarcalculator.co.uk)
+// ── Constants ──────────────────────────────────────────────────────────────
+const PERFORMANCE_RATIO  = 0.84    // Commercial inverter + wiring efficiency
+const USABLE_ROOF_FACTOR = 0.70    // 70% of drawn area (plant, rooflights, margins)
+const PANEL_AREA_M2      = 2.0     // m² per 450W commercial bifacial panel
+const PANEL_PEAK_WATTS   = 450     // Commercial-grade module (Wp)
+const COST_PER_KWP       = 800     // £/kWp — commercial bulk pricing incl. labour
+const SELF_CONSUMPTION   = 0.75    // 75% self-consumed on-site (commercial daytime loads)
+const ANNUAL_DEGRADATION = 0.005   // 0.5%/yr panel output degradation
+const PROJECTION_YEARS   = 30      // 30-year operational lifespan
+const SEG_TARIFF_P       = 5       // p/kWh Smart Export Guarantee (additional benefit)
+const GRID_ESCALATION    = 0.03    // 3%/yr assumed grid price rise
+const PPA_DISCOUNT       = 0.20    // PPA rate = grid rate × (1 - PPA_DISCOUNT) = 80% of grid
+const CO2_KG_PER_KWH     = 0.233   // UK grid carbon intensity 2024 (DESNZ)
 
 /**
- * Run the full solar calculation.
- *
- * @param {object} inputs
- * @param {number} inputs.roofAreaM2         - Total drawn roof area in m²
- * @param {number} inputs.irradianceKwhM2y   - Solar irradiance kWh/m²/year from PVGIS
- * @param {number} inputs.orientationFactor  - 0–1 efficiency factor for roof direction
- * @param {number} inputs.roofTiltDeg        - Roof pitch in degrees
- * @param {number} inputs.annualBillGbp      - User's current annual electricity bill £
- * @param {number} [inputs.panelCountOverride] - Optional: user specifies panel count
- *
- * @returns {object} Full calculation results
+ * Calculate generation for a single building.
  */
-export function calculateSolar(inputs) {
-  const {
-    roofAreaM2,
-    irradianceKwhM2y,
-    orientationFactor = 0.95,
-    roofTiltDeg = 35,
-    annualBillGbp = 1200,
-    panelCountOverride = null
-  } = inputs
-
-  // Usable roof area
+function calcBuilding(building, irradianceKwhM2y) {
+  const { roofAreaM2, orientationFactor = 0.95 } = building
   const usableAreaM2 = roofAreaM2 * USABLE_ROOF_FACTOR
-
-  // Panel count
-  const maxPanels = Math.floor(usableAreaM2 / PANEL_AREA_M2)
-  const panelCount = panelCountOverride
-    ? Math.min(panelCountOverride, maxPanels)
-    : maxPanels
-
-  // System size
-  const systemKwp = (panelCount * PANEL_PEAK_WATTS) / 1000
-
-  // Annual generation
-  // Formula: kWp × irradiance × performance ratio × orientation factor
-  const annualGenerationKwh = systemKwp * irradianceKwhM2y * PERFORMANCE_RATIO * orientationFactor
-
-  // Financial
-  const selfConsumedKwh = annualGenerationKwh * SELF_CONSUMPTION_RATIO
-  const exportedKwh = annualGenerationKwh * (1 - SELF_CONSUMPTION_RATIO)
-
-  const savingsFromSelfConsumption = selfConsumedKwh * ELECTRICITY_UNIT_RATE
-  const exportIncome = exportedKwh * EXPORT_TARIFF
-  const totalAnnualBenefit = savingsFromSelfConsumption + exportIncome
-
-  // Bill reduction %
-  const estimatedAnnualUsageKwh = annualBillGbp / ELECTRICITY_UNIT_RATE
-  const billReductionPct = Math.min(
-    Math.round((selfConsumedKwh / estimatedAnnualUsageKwh) * 100),
-    100
-  )
-
-  // System cost
-  const installCostGbp = systemKwp * COST_PER_KWP
-
-  // Payback
-  const paybackYears = installCostGbp / totalAnnualBenefit
-
-  // 30-year projection (with degradation)
-  const twentyFiveYearBenefit = Array.from({ length: PROJECTION_YEARS }, (_, i) => {
-    const degraded = Math.pow(1 - ANNUAL_DEGRADATION, i)
-    return totalAnnualBenefit * degraded
-  }).reduce((a, b) => a + b, 0)
-
-  // CO2 savings (UK grid average: 0.233 kg CO2/kWh)
-  const annualCo2KgSaved = annualGenerationKwh * 0.233
-
+  const panelCount   = Math.floor(usableAreaM2 / PANEL_AREA_M2)
+  const systemKwp    = (panelCount * PANEL_PEAK_WATTS) / 1000
+  const annualKwh    = systemKwp * irradianceKwhM2y * PERFORMANCE_RATIO * orientationFactor
   return {
-    // System
     panelCount,
-    systemKwp: +systemKwp.toFixed(2),
+    systemKwp:    +systemKwp.toFixed(2),
     usableAreaM2: +usableAreaM2.toFixed(1),
-
-    // Generation
-    annualGenerationKwh: Math.round(annualGenerationKwh),
-
-    // Financial
-    savingsFromSelfConsumption: +savingsFromSelfConsumption.toFixed(2),
-    exportIncome: +exportIncome.toFixed(2),
-    totalAnnualBenefit: +totalAnnualBenefit.toFixed(2),
-    billReductionPct,
-    installCostGbp: Math.round(installCostGbp),
-    paybackYears: +paybackYears.toFixed(1),
-    twentyFiveYearBenefit: Math.round(twentyFiveYearBenefit),
-
-    // Environment
-    annualCo2KgSaved: Math.round(annualCo2KgSaved),
-    treesEquivalent: Math.round(annualCo2KgSaved / 21) // avg tree absorbs 21kg CO2/year
+    annualKwh:    Math.round(annualKwh)
   }
 }
 
 /**
- * Format currency as GBP
+ * Full commercial solar calculation for one or more buildings on the same site.
+ *
+ * @param {object}   inputs
+ * @param {Array}    inputs.buildings         - [{ roofAreaM2, orientationFactor, roofTiltDeg, compassDirection, name }]
+ * @param {number}   inputs.irradianceKwhM2y  - PVGIS site irradiance kWh/m²/year
+ * @param {number}   inputs.unitRatePence     - Customer grid rate p/kWh (e.g. 24.5)
+ * @param {number}   [inputs.ppaDiscountPct]  - PPA discount off grid rate (default 20%)
+ * @returns {object} Full results including capital and PPA models
  */
-export function formatGbp(value) {
-  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(value)
+export function calculateSolar({ buildings, irradianceKwhM2y, unitRatePence, ppaDiscountPct = 20 }) {
+  const unitRateGbp = unitRatePence / 100
+
+  // ── Per-building results ────────────────────────────────────────────────
+  const bldgResults = buildings.map((b, i) => ({
+    name:             b.name || `Building ${i + 1}`,
+    roofAreaM2:       b.roofAreaM2,
+    compassDirection: b.compassDirection || 'S',
+    roofTiltDeg:      b.roofTiltDeg ?? 35,
+    orientationFactor: b.orientationFactor,
+    ...calcBuilding(b, irradianceKwhM2y)
+  }))
+
+  // ── Site totals ─────────────────────────────────────────────────────────
+  const totalPanelCount   = bldgResults.reduce((s, b) => s + b.panelCount, 0)
+  const totalSystemKwp    = +bldgResults.reduce((s, b) => s + b.systemKwp, 0).toFixed(2)
+  const totalUsableAreaM2 = +bldgResults.reduce((s, b) => s + b.usableAreaM2, 0).toFixed(1)
+  const totalRoofAreaM2   = +buildings.reduce((s, b) => s + (b.roofAreaM2 || 0), 0).toFixed(1)
+  const annualGenerationKwh = bldgResults.reduce((s, b) => s + b.annualKwh, 0)
+
+  const selfConsumedKwh = annualGenerationKwh * SELF_CONSUMPTION
+  const exportedKwh     = annualGenerationKwh * (1 - SELF_CONSUMPTION)
+  const installCostGbp  = Math.round(totalSystemKwp * COST_PER_KWP)
+
+  // ── Capital purchase model ──────────────────────────────────────────────
+  // Primary saving: avoided grid purchase on self-consumed solar
+  const annualSavings  = selfConsumedKwh * unitRateGbp
+  // Additional benefit: Smart Export Guarantee (shown separately, NOT in main savings)
+  const exportIncomeSEG = exportedKwh * (SEG_TARIFF_P / 100)
+  // Total for payback calc includes export (it is real money)
+  const totalAnnualBenefit = annualSavings + exportIncomeSEG
+  const paybackYears = +(installCostGbp / totalAnnualBenefit).toFixed(1)
+
+  // Year-by-year: grid rate escalates, generation degrades
+  let capitalCumulative = -installCostGbp
+  const capitalYearByYear = Array.from({ length: PROJECTION_YEARS }, (_, i) => {
+    const year        = i + 1
+    const degradation = Math.pow(1 - ANNUAL_DEGRADATION, i)
+    const escalation  = Math.pow(1 + GRID_ESCALATION, i)
+    const genKwh      = annualGenerationKwh * degradation
+    const selfCon     = genKwh * SELF_CONSUMPTION
+    const exported    = genKwh * (1 - SELF_CONSUMPTION)
+    const benefit     = selfCon * unitRateGbp * escalation + exported * (SEG_TARIFF_P / 100)
+    capitalCumulative += benefit
+    return { year, annualBenefit: Math.round(benefit), cumulative: Math.round(capitalCumulative) }
+  })
+
+  const thirtyYearGross  = capitalYearByYear.reduce((s, y) => s + y.annualBenefit, 0)
+  const thirtyYearProfit = thirtyYearGross - installCostGbp
+
+  // ── PPA model ───────────────────────────────────────────────────────────
+  // Developer funds install. Customer pays PPA rate (80% of grid) per kWh self-consumed.
+  // Customer saves (grid_rate - ppa_rate) on self-consumed kWh.
+  // Grid rate escalates over time → saving grows. PPA rate is fixed.
+  const ppaRateGbp     = unitRateGbp * (1 - ppaDiscountPct / 100)
+  const ppaAnnualSavingY1 = selfConsumedKwh * (unitRateGbp - ppaRateGbp)
+
+  const PPA_DURATIONS = [10, 15, 20, 25]
+  const ppaContracts  = {}
+
+  for (const duration of PPA_DURATIONS) {
+    let ppaCumulative = 0
+    const yearByYear = Array.from({ length: duration }, (_, i) => {
+      const year        = i + 1
+      const degradation = Math.pow(1 - ANNUAL_DEGRADATION, i)
+      const escalation  = Math.pow(1 + GRID_ESCALATION, i)
+      const genKwh      = annualGenerationKwh * degradation
+      const selfCon     = genKwh * SELF_CONSUMPTION
+      // Grid rate escalates; PPA rate is fixed → saving grows each year
+      const yearSaving  = Math.max(0, selfCon * (unitRateGbp * escalation - ppaRateGbp))
+      ppaCumulative    += yearSaving
+      return { year, annualSaving: Math.round(yearSaving), cumulative: Math.round(ppaCumulative) }
+    })
+    ppaContracts[duration] = { totalSaving: Math.round(ppaCumulative), yearByYear }
+  }
+
+  // ── Environment ─────────────────────────────────────────────────────────
+  const annualCo2KgSaved = Math.round(annualGenerationKwh * CO2_KG_PER_KWH)
+  const treesEquivalent  = Math.round(annualCo2KgSaved / 21)
+
+  return {
+    buildings:          bldgResults,
+    buildingCount:      bldgResults.length,
+    totalPanelCount,
+    totalSystemKwp,
+    totalUsableAreaM2,
+    totalRoofAreaM2:    +totalRoofAreaM2,
+    annualGenerationKwh: Math.round(annualGenerationKwh),
+    selfConsumedKwh:    Math.round(selfConsumedKwh),
+    exportedKwh:        Math.round(exportedKwh),
+    capital: {
+      unitRatePence,
+      installCostGbp,
+      annualSavings:      Math.round(annualSavings),
+      exportIncomeSEG:    Math.round(exportIncomeSEG),
+      totalAnnualBenefit: Math.round(totalAnnualBenefit),
+      paybackYears,
+      thirtyYearGross:    Math.round(thirtyYearGross),
+      thirtyYearProfit:   Math.round(thirtyYearProfit),
+      yearByYear:         capitalYearByYear
+    },
+    ppa: {
+      unitRatePence,
+      ppaRatePence:    Math.round(ppaRateGbp * 100 * 10) / 10,
+      ppaDiscountPct,
+      annualSavingY1:  Math.round(ppaAnnualSavingY1),
+      contracts:       ppaContracts
+    },
+    annualCo2KgSaved,
+    treesEquivalent
+  }
 }
 
-/**
- * Format a number with commas
- */
+export function formatGbp(value) {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency', currency: 'GBP', maximumFractionDigits: 0
+  }).format(value)
+}
+
 export function formatNumber(value) {
   return new Intl.NumberFormat('en-GB').format(value)
 }

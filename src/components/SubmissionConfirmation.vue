@@ -21,7 +21,7 @@
       <div class="space-y-2 text-sm">
         <div class="flex justify-between">
           <span class="text-gray-600">System size</span>
-          <span class="font-semibold">{{ results.systemKwp }} kWp · {{ results.panelCount }} panels</span>
+          <span class="font-semibold">{{ results.totalSystemKwp }} kWp · {{ results.totalPanelCount }} panels</span>
         </div>
         <div class="flex justify-between">
           <span class="text-gray-600">Annual generation</span>
@@ -29,15 +29,15 @@
         </div>
         <div class="flex justify-between">
           <span class="text-gray-600">Annual benefit</span>
-          <span class="font-semibold text-green-700">{{ formatGbp(results.totalAnnualBenefit) }}</span>
+          <span class="font-semibold text-green-700">{{ formatGbp(results.capital.totalAnnualBenefit) }}</span>
         </div>
         <div class="flex justify-between">
           <span class="text-gray-600">Payback period</span>
-          <span class="font-semibold">{{ results.paybackYears }} years</span>
+          <span class="font-semibold">{{ results.capital.paybackYears }} years</span>
         </div>
         <div class="border-t border-solar-200 pt-2 flex justify-between">
-          <span class="text-gray-600">30-year benefit</span>
-          <span class="font-bold text-green-700">{{ formatGbp(results.twentyFiveYearBenefit) }}</span>
+          <span class="text-gray-600">30-year gross receipts</span>
+          <span class="font-bold text-green-700">{{ formatGbp(results.capital.thirtyYearGross) }}</span>
         </div>
       </div>
     </div>

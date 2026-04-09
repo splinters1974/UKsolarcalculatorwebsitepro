@@ -1,9 +1,9 @@
 <template>
   <form @submit.prevent="submit" novalidate class="space-y-5">
     <div>
-      <h2 class="text-xl font-bold text-gray-900">Your details</h2>
+      <h2 class="text-xl font-bold text-gray-900">Get your detailed report</h2>
       <p class="text-sm text-gray-500 mt-1">
-        We'll email your personalised solar report straight to your inbox.
+        Enter your details to download a branded PDF report you can share with your board, finance team, or landlord.
       </p>
     </div>
 
@@ -129,7 +129,7 @@
         </svg>
         Sending your report…
       </span>
-      <span v-else>Get my solar report →</span>
+      <span v-else>Download my PDF report →</span>
     </button>
   </form>
 </template>
@@ -195,17 +195,17 @@ async function submit() {
 
       // Calculation results (for our records)
       '--- Solar Results ---':   '',
-      'Roof Area':               `${Math.round(s.roofAreaM2 ?? 0)} m²`,
-      'Roof Orientation':        s.compassDirection ?? '—',
-      'Roof Pitch':              `${s.roofTiltDeg ?? 35}°`,
-      'Irradiance':              `${s.irradianceKwhM2y ?? 0} kWh/m²/yr`,
-      'System Size':             `${s.systemKwp ?? 0} kWp`,
-      'Panel Count':             s.panelCount ?? 0,
+      'Buildings':               s.buildingCount ?? 1,
+      'Total Roof Area':         `${Math.round(s.totalRoofAreaM2 ?? 0)} m²`,
+      'System Size':             `${s.totalSystemKwp ?? 0} kWp`,
+      'Panel Count':             s.totalPanelCount ?? 0,
       'Annual Generation':       `${formatNumber(s.annualGenerationKwh ?? 0)} kWh`,
-      'Annual Benefit':          formatGbp(s.totalAnnualBenefit ?? 0),
-      'Install Cost':            formatGbp(s.installCostGbp ?? 0),
-      'Payback Period':          `${s.paybackYears ?? 0} years`,
-      '30-Year Benefit':         formatGbp(s.twentyFiveYearBenefit ?? 0),
+      'Annual Savings':          formatGbp(s.capital?.annualSavings ?? 0),
+      'Annual Benefit (total)':  formatGbp(s.capital?.totalAnnualBenefit ?? 0),
+      'Install Cost':            formatGbp(s.capital?.installCostGbp ?? 0),
+      'Payback Period':          `${s.capital?.paybackYears ?? 0} years`,
+      '30-Year Net Profit':      formatGbp(s.capital?.thirtyYearProfit ?? 0),
+      'PPA Year-1 Saving':       formatGbp(s.ppa?.annualSavingY1 ?? 0),
       'CO₂ Saved/Year':          `${formatNumber(s.annualCo2KgSaved ?? 0)} kg`,
 
       // Metadata

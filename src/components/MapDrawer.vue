@@ -1,159 +1,145 @@
 <template>
   <div class="flex flex-col gap-4">
 
-    <!-- Address Search with Places Autocomplete -->
+    <!-- Address Search -->
     <div>
-      <label class="form-label">Search your address</label>
-      <div class="flex gap-2">
-        <div class="relative flex-1">
-          <input
-            ref="searchInput"
-            v-model="addressQuery"
-            type="text"
-            class="form-input pr-8"
-            placeholder="Start typing your address…"
-            autocomplete="off"
-          />
-          <button
-            v-if="addressQuery"
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            @click="clearSearch"
-            type="button"
-          >
-            ✕
-          </button>
-        </div>
+      <label class="form-label">Search your site address</label>
+      <div class="relative">
+        <input ref="searchInput" v-model="addressQuery" type="text" class="form-input pr-8" placeholder="Start typing your address…" autocomplete="off" />
+        <button v-if="addressQuery" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" @click="clearSearch" type="button">✕</button>
       </div>
-      <p class="text-xs text-gray-400 mt-1">UK addresses only. Search zooms directly to your building.</p>
+      <p class="text-xs text-gray-400 mt-1">UK addresses only. Search zooms to your site.</p>
     </div>
 
-    <!-- Roof tilt selector -->
-    <div>
-      <label class="form-label">Roof pitch</label>
-      <div class="grid grid-cols-4 gap-2">
-        <button
-          v-for="opt in tiltOptions"
-          :key="opt.value"
-          type="button"
-          class="rounded-lg border text-sm py-2 px-2 text-center transition-colors"
-          :class="selectedTilt === opt.value
-            ? 'bg-solar-500 border-solar-500 text-white font-semibold'
-            : 'bg-white border-gray-300 text-gray-700 hover:border-solar-400'"
-          @click="selectedTilt = opt.value"
-        >
-          <div class="font-semibold">{{ opt.label }}</div>
-          <div class="text-xs opacity-75">{{ opt.desc }}</div>
-        </button>
-      </div>
-    </div>
-
-    <!-- Map container -->
+    <!-- Map -->
     <div class="relative rounded-xl overflow-hidden border border-gray-200 shadow-sm" style="height: 450px;">
       <div ref="mapContainer" class="w-full h-full bg-gray-100"></div>
-
-      <!-- Loading / error overlay -->
       <div v-if="!mapsLoaded" class="absolute inset-0 flex items-center justify-center bg-gray-100">
         <div v-if="apiKeyMissing" class="text-center p-6 max-w-sm">
           <div class="text-5xl mb-3">🗝️</div>
           <p class="font-semibold text-gray-800 mb-1">Google Maps API key needed</p>
-          <p class="text-sm text-gray-500 mb-4">
-            Add your key to <code class="bg-gray-200 px-1 rounded">.env</code> as<br/>
-            <code class="bg-gray-200 px-1 rounded text-xs">VITE_GOOGLE_MAPS_API_KEY</code>
-          </p>
-          <button class="btn-secondary text-sm" @click="$emit('manualMode')">
-            Use manual entry instead →
-          </button>
+          <p class="text-sm text-gray-500 mb-4">Add your key to <code class="bg-gray-200 px-1 rounded">.env</code> as <code class="bg-gray-200 px-1 rounded text-xs">VITE_GOOGLE_MAPS_API_KEY</code></p>
+          <button class="btn-secondary text-sm" @click="$emit('manualMode')">Use manual entry instead →</button>
         </div>
         <div v-else class="flex items-center gap-3 text-gray-500">
-          <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-          </svg>
+          <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
           Loading map…
         </div>
       </div>
     </div>
 
-    <!-- Drawing instructions (before polygon drawn) -->
+    <!-- Drawing instructions -->
     <transition name="fade">
-      <div v-if="mapsLoaded && !polygonDrawn" class="bg-solar-50 border border-solar-200 rounded-lg p-4 text-sm text-solar-800">
-        <p class="font-semibold mb-2">How to measure your roof:</p>
+      <div v-if="mapsLoaded && buildings.length === 0" class="bg-solar-50 border border-solar-200 rounded-lg p-4 text-sm text-solar-800">
+        <p class="font-semibold mb-2">How to map your roofs:</p>
         <ol class="list-decimal list-inside space-y-1 text-solar-700">
-          <li>Search your address above — the map will zoom to your building</li>
-          <li>Click the <strong>pentagon icon</strong> in the map's top-right toolbar</li>
+          <li>Search your site address above</li>
+          <li>Click the <strong>pentagon icon</strong> in the map toolbar (top-right)</li>
           <li>Click around the roof outline — each click places a point</li>
-          <li>Double-click the last point (or click the first) to finish</li>
-          <li>You can drag the yellow handles to adjust the shape</li>
+          <li>Double-click to finish the shape</li>
+          <li>Use <strong>Add another building</strong> to trace additional roofs on the same site</li>
         </ol>
       </div>
     </transition>
 
-    <!-- Measurement summary (after polygon drawn) -->
+    <!-- PVGIS loading -->
+    <div v-if="irradianceLoading" class="flex items-center gap-3 text-sm text-solar-700 bg-solar-50 border border-solar-200 rounded-lg p-3">
+      <svg class="animate-spin h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+      Fetching solar irradiance for this location from PVGIS…
+    </div>
+
+    <!-- PVGIS error -->
+    <div v-if="pvgisError" class="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+      <span class="shrink-0">⚠️</span>
+      <span>Could not fetch live irradiance data — using estimated UK average for this latitude. Results remain a reliable guide.</span>
+    </div>
+
+    <!-- Buildings list -->
     <transition name="fade">
-      <div v-if="polygonDrawn" class="space-y-4">
+      <div v-if="buildings.length > 0" class="space-y-3">
+
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold text-gray-900">Buildings on this site</h3>
+          <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{{ buildings.length }} building{{ buildings.length !== 1 ? 's' : '' }} · {{ Math.round(totalRoofArea) }} m² total</span>
+        </div>
+
+        <!-- Per-building card -->
+        <div v-for="b in buildings" :key="b.id" class="card border-l-4 border-solar-400 py-3">
+          <div class="flex items-center justify-between mb-3">
+            <span class="font-semibold text-gray-800 text-sm">{{ b.name }}</span>
+            <button class="text-xs text-red-500 hover:text-red-700 underline" @click="removeBuilding(b.id)">Remove</button>
+          </div>
+          <div class="grid grid-cols-3 gap-3 text-xs">
+            <div>
+              <p class="text-gray-400 mb-1">Roof area</p>
+              <p class="font-bold text-gray-800 text-sm">{{ Math.round(b.roofAreaM2) }} m²</p>
+              <p class="text-gray-400">~{{ Math.floor(b.roofAreaM2 * 0.70 / 2.0) }} panels est.</p>
+            </div>
+            <div>
+              <p class="text-gray-400 mb-1">Orientation</p>
+              <select v-model="b.compassDirection" class="form-input text-xs py-1 px-2 w-full" @change="updateBuildingOrientation(b)">
+                <option value="S">South (100%)</option>
+                <option value="SE">SE (96%)</option>
+                <option value="SW">SW (96%)</option>
+                <option value="E">East (85%)</option>
+                <option value="W">West (85%)</option>
+                <option value="NE">NE (70%)</option>
+                <option value="NW">NW (70%)</option>
+                <option value="N">North (60%)</option>
+              </select>
+            </div>
+            <div>
+              <p class="text-gray-400 mb-1">Roof pitch</p>
+              <select v-model.number="b.roofTiltDeg" class="form-input text-xs py-1 px-2 w-full">
+                <option :value="0">Flat (0°)</option>
+                <option :value="20">Shallow (20°)</option>
+                <option :value="35">Standard (35°)</option>
+                <option :value="45">Steep (45°)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Site summary -->
         <div class="grid grid-cols-3 gap-3">
           <div class="card text-center py-3">
-            <p class="text-2xl font-bold text-solar-600">
-              {{ Math.round(roofAreaM2) }}<span class="text-base font-normal">m²</span>
-            </p>
-            <p class="text-xs text-gray-500 mt-1">Roof area drawn</p>
+            <p class="text-xl font-bold text-solar-600">{{ Math.round(totalRoofArea) }}<span class="text-sm font-normal">m²</span></p>
+            <p class="text-xs text-gray-500 mt-0.5">Total roof area</p>
           </div>
           <div class="card text-center py-3">
-            <p class="text-2xl font-bold text-solar-600">{{ compassDirection }}</p>
-            <p class="text-xs text-gray-500 mt-1">Roof orientation</p>
-            <p class="text-xs text-gray-400">{{ Math.round(orientationFactorPct) }}% efficient</p>
+            <p class="text-xl font-bold text-solar-600">~{{ estimatedPanels }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">Est. panels</p>
           </div>
           <div class="card text-center py-3">
-            <div v-if="irradianceLoading" class="flex items-center justify-center h-8">
-              <svg class="animate-spin h-5 w-5 text-solar-400" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-              </svg>
+            <div v-if="irradianceLoading" class="flex justify-center h-7 items-center">
+              <svg class="animate-spin h-4 w-4 text-solar-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
             </div>
-            <p v-else class="text-2xl font-bold text-solar-600">{{ irradianceKwhM2y }}</p>
-            <p class="text-xs text-gray-500 mt-1">kWh/m²/year</p>
-            <p class="text-xs text-gray-400">Solar irradiance</p>
+            <p v-else class="text-xl font-bold text-solar-600">{{ siteIrradiance }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">kWh/m²/yr</p>
           </div>
         </div>
 
-        <!-- PVGIS error notice -->
-        <div v-if="pvgisError" class="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <span class="text-base">⚠️</span>
-          <span>Could not fetch live irradiance data — using estimated UK average for your latitude instead. Results will still be a good guide.</span>
-        </div>
-
-        <!-- Monthly mini-bars (if PVGIS data available) -->
+        <!-- Monthly profile -->
         <div v-if="monthlyData.length && !pvgisError" class="card py-3">
-          <p class="text-xs font-semibold text-gray-600 mb-3">Estimated monthly generation profile</p>
+          <p class="text-xs font-semibold text-gray-600 mb-3">Monthly irradiance profile (kWh/kWp · PVGIS)</p>
           <div class="flex items-end gap-1 h-14">
-            <div
-              v-for="m in monthlyData"
-              :key="m.month"
-              class="flex-1 flex flex-col items-center gap-1"
-            >
-              <div
-                class="w-full rounded-t"
-                :style="{ height: `${(m.yieldKwh / maxMonthlyYield) * 48}px`, background: '#f59e0b' }"
-                :title="`${m.monthName}: ${m.yieldKwh} kWh/kWp`"
-              ></div>
+            <div v-for="m in monthlyData" :key="m.month" class="flex-1 flex flex-col items-center gap-1">
+              <div class="w-full rounded-t" :style="{ height: `${(m.yieldKwh / maxMonthlyYield) * 48}px`, background: '#f59e0b' }"></div>
               <span class="text-gray-400" style="font-size:9px">{{ m.monthName }}</span>
             </div>
           </div>
-          <p class="text-xs text-gray-400 mt-2 text-right">kWh per kWp installed · source: PVGIS</p>
         </div>
 
+        <!-- Actions -->
         <div class="flex gap-3">
-          <button
-            class="btn-primary flex-1 py-3"
-            @click="confirmRoof"
-            :disabled="irradianceLoading"
-          >
-            {{ irradianceLoading ? 'Fetching solar data…' : 'Use this roof →' }}
+          <button class="btn-secondary flex-1 text-sm" @click="enableDrawing" :disabled="irradianceLoading">
+            + Add another building
           </button>
-          <button class="btn-secondary px-4" @click="clearPolygon" title="Redraw">
-            ↺ Redraw
+          <button class="btn-primary flex-1 py-3" @click="confirmAllBuildings" :disabled="irradianceLoading">
+            {{ irradianceLoading ? 'Fetching data…' : 'Confirm site →' }}
           </button>
         </div>
+
       </div>
     </transition>
 
@@ -162,69 +148,41 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import {
-  loadGoogleMaps,
-  calculatePolygonAreaM2,
-  calculateRoofOrientation,
-  headingToCompass,
-  orientationEfficiency
-} from '@/services/googleMapsService'
+import { loadGoogleMaps, calculatePolygonAreaM2, calculateRoofOrientation, headingToCompass, orientationEfficiency } from '@/services/googleMapsService'
 import { fetchSolarData, fallbackIrradiance, fallbackMonthly, annotateMonths } from '@/services/pvgisService'
 
 const emit = defineEmits(['confirmed', 'manualMode'])
 
-// Refs
 const mapContainer = ref(null)
-const searchInput   = ref(null)
-const addressQuery  = ref('')
+const searchInput  = ref(null)
+const addressQuery = ref('')
 
-// State
-const mapsLoaded       = ref(false)
-const apiKeyMissing    = ref(false)
-const polygonDrawn     = ref(false)
+const mapsLoaded        = ref(false)
+const apiKeyMissing     = ref(false)
 const irradianceLoading = ref(false)
-const pvgisError       = ref(false)
+const pvgisError        = ref(false)
 
-// Roof data
-const roofAreaM2        = ref(0)
-const roofHeadingDeg    = ref(180)
-const irradianceKwhM2y  = ref(0)
-const monthlyData       = ref([])
-const lat = ref(52.0)
-const lng = ref(-1.5)
+const siteIrradiance = ref(0)
+const monthlyData    = ref([])
+const siteLat        = ref(52.0)
+const siteLng        = ref(-1.5)
+const pvgisFetched   = ref(false)
 
-// Roof tilt
-const selectedTilt = ref(35)
-const tiltOptions = [
-  { value: 0,  label: 'Flat',   desc: '0°' },
-  { value: 20, label: 'Shallow', desc: '20°' },
-  { value: 35, label: 'Standard', desc: '35°' },
-  { value: 45, label: 'Steep',  desc: '45°' }
-]
+const buildings = ref([])
 
-// Google Maps instances
-let map = null
+const COMPASS_TO_HEADING = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 }
+
+let map            = null
 let drawingManager = null
-let autocomplete = null
-let currentPolygon = null
+let autocomplete   = null
 
-// Computed
-const compassDirection = computed(() => headingToCompass(roofHeadingDeg.value))
-const orientationFactorPct = computed(() => orientationEfficiency(roofHeadingDeg.value) * 100)
+const totalRoofArea   = computed(() => buildings.value.reduce((s, b) => s + b.roofAreaM2, 0))
+const estimatedPanels = computed(() => Math.floor(totalRoofArea.value * 0.70 / 2.0))
 const maxMonthlyYield = computed(() => Math.max(...monthlyData.value.map(m => m.yieldKwh), 1))
-
-const pvgisAzimuth = computed(() => {
-  const h = roofHeadingDeg.value
-  return h > 180 ? h - 360 : h
-})
 
 onMounted(async () => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-  if (!apiKey || apiKey.startsWith('PLACEHOLDER')) {
-    apiKeyMissing.value = true
-    return
-  }
-
+  if (!apiKey || apiKey.startsWith('PLACEHOLDER')) { apiKeyMissing.value = true; return }
   try {
     await loadGoogleMaps()
     initMap()
@@ -239,55 +197,27 @@ onMounted(async () => {
 function initMap() {
   const maps = window.google.maps
   map = new maps.Map(mapContainer.value, {
-    center: { lat: 52.5, lng: -1.5 },
-    zoom: 6,
-    mapTypeId: 'satellite',
-    tilt: 0,
-    disableDefaultUI: false,
-    streetViewControl: false,
-    mapTypeControl: true,
-    fullscreenControl: true,
-    zoomControl: true,
-    mapTypeControlOptions: {
-      style: maps.MapTypeControlStyle.DROPDOWN_MENU,
-      mapTypeIds: ['satellite', 'roadmap', 'hybrid']
-    }
+    center: { lat: 52.5, lng: -1.5 }, zoom: 6, mapTypeId: 'satellite', tilt: 0,
+    streetViewControl: false, mapTypeControl: true, fullscreenControl: true, zoomControl: true,
+    mapTypeControlOptions: { style: maps.MapTypeControlStyle.DROPDOWN_MENU, mapTypeIds: ['satellite', 'roadmap', 'hybrid'] }
   })
-
   drawingManager = new maps.drawing.DrawingManager({
-    drawingMode: null,
-    drawingControl: true,
-    drawingControlOptions: {
-      position: maps.ControlPosition.TOP_RIGHT,
-      drawingModes: [maps.drawing.OverlayType.POLYGON]
-    },
-    polygonOptions: {
-      fillColor: '#f59e0b',
-      fillOpacity: 0.30,
-      strokeColor: '#d97706',
-      strokeWeight: 2,
-      editable: true,
-      draggable: true
-    }
+    drawingMode: null, drawingControl: true,
+    drawingControlOptions: { position: maps.ControlPosition.TOP_RIGHT, drawingModes: [maps.drawing.OverlayType.POLYGON] },
+    polygonOptions: { fillColor: '#f59e0b', fillOpacity: 0.30, strokeColor: '#d97706', strokeWeight: 2, editable: true, draggable: false }
   })
-
   drawingManager.setMap(map)
   maps.event.addListener(drawingManager, 'polygoncomplete', onPolygonComplete)
 }
 
 function initAutocomplete() {
   if (!searchInput.value || !window.google) return
-
   autocomplete = new window.google.maps.places.Autocomplete(searchInput.value, {
-    componentRestrictions: { country: 'gb' },
-    fields: ['geometry', 'formatted_address'],
-    types: ['geocode', 'establishment']
+    componentRestrictions: { country: 'gb' }, fields: ['geometry', 'formatted_address'], types: ['geocode', 'establishment']
   })
-
   autocomplete.addListener('place_changed', () => {
     const place = autocomplete.getPlace()
     if (!place.geometry?.location) return
-
     addressQuery.value = place.formatted_address || ''
     map.setCenter(place.geometry.location)
     map.setZoom(19)
@@ -296,82 +226,83 @@ function initAutocomplete() {
 }
 
 async function onPolygonComplete(polygon) {
-  if (currentPolygon) currentPolygon.setMap(null)
-  currentPolygon = polygon
   drawingManager.setDrawingMode(null)
+  polygon.setEditable(false)
 
-  // Listen for edits to recalculate
-  window.google.maps.event.addListener(polygon.getPath(), 'set_at', recalculateFromPolygon)
-  window.google.maps.event.addListener(polygon.getPath(), 'insert_at', recalculateFromPolygon)
+  const areaM2     = calculatePolygonAreaM2(polygon)
+  const headingDeg = calculateRoofOrientation(polygon)
 
-  await recalculateFromPolygon()
-  polygonDrawn.value = true
-}
+  buildings.value.push({
+    id: Date.now() + Math.random(),
+    name: `Building ${buildings.value.length + 1}`,
+    roofAreaM2: areaM2,
+    roofHeadingDeg: headingDeg,
+    compassDirection: headingToCompass(headingDeg),
+    orientationFactor: orientationEfficiency(headingDeg),
+    roofTiltDeg: 35,
+    polygonRef: polygon
+  })
 
-async function recalculateFromPolygon() {
-  roofAreaM2.value = calculatePolygonAreaM2(currentPolygon)
-  roofHeadingDeg.value = calculateRoofOrientation(currentPolygon)
-
-  // Get centroid
-  const bounds = new window.google.maps.LatLngBounds()
-  currentPolygon.getPath().forEach(p => bounds.extend(p))
-  const centre = bounds.getCenter()
-  lat.value = centre.lat()
-  lng.value = centre.lng()
-
-  await fetchIrradiance()
+  if (!pvgisFetched.value) {
+    const bounds = new window.google.maps.LatLngBounds()
+    polygon.getPath().forEach(p => bounds.extend(p))
+    const centre = bounds.getCenter()
+    siteLat.value = centre.lat()
+    siteLng.value = centre.lng()
+    await fetchIrradiance()
+    pvgisFetched.value = true
+  }
 }
 
 async function fetchIrradiance() {
   irradianceLoading.value = true
   pvgisError.value = false
   monthlyData.value = []
-
   try {
-    const result = await fetchSolarData(lat.value, lng.value, selectedTilt.value, pvgisAzimuth.value)
-    irradianceKwhM2y.value = result.annual.irradiance || result.annual.yieldPerKwp
+    const result = await fetchSolarData(siteLat.value, siteLng.value, 35, 0)
+    siteIrradiance.value = result.annual.irradiance || result.annual.yieldPerKwp
     monthlyData.value = annotateMonths(result.monthly)
-  } catch (err) {
-    console.warn('PVGIS fetch failed, using fallback:', err)
+  } catch {
     pvgisError.value = true
-    irradianceKwhM2y.value = fallbackIrradiance(lat.value)
-    const fallback = fallbackMonthly(fallbackIrradiance(lat.value))
-    monthlyData.value = fallback
+    siteIrradiance.value = fallbackIrradiance(siteLat.value)
+    monthlyData.value = fallbackMonthly(siteIrradiance.value)
   } finally {
     irradianceLoading.value = false
   }
 }
 
-function confirmRoof() {
+function enableDrawing() {
+  if (drawingManager) drawingManager.setDrawingMode(window.google.maps.drawing.OverlayType.POLYGON)
+}
+
+function removeBuilding(id) {
+  const idx = buildings.value.findIndex(b => b.id === id)
+  if (idx === -1) return
+  buildings.value[idx].polygonRef?.setMap(null)
+  buildings.value.splice(idx, 1)
+  buildings.value.forEach((b, i) => { b.name = `Building ${i + 1}` })
+}
+
+function updateBuildingOrientation(building) {
+  building.roofHeadingDeg    = COMPASS_TO_HEADING[building.compassDirection] ?? 180
+  building.orientationFactor = orientationEfficiency(building.roofHeadingDeg)
+}
+
+function confirmAllBuildings() {
+  if (!buildings.value.length || irradianceLoading.value) return
   emit('confirmed', {
-    roofAreaM2: roofAreaM2.value,
-    roofHeadingDeg: roofHeadingDeg.value,
-    compassDirection: compassDirection.value,
-    orientationFactor: orientationEfficiency(roofHeadingDeg.value),
-    irradianceKwhM2y: irradianceKwhM2y.value,
-    roofTiltDeg: selectedTilt.value,
+    buildings: buildings.value.map(b => ({
+      name: b.name, roofAreaM2: b.roofAreaM2,
+      compassDirection: b.compassDirection, orientationFactor: b.orientationFactor,
+      roofTiltDeg: b.roofTiltDeg, roofHeadingDeg: b.roofHeadingDeg
+    })),
+    irradianceKwhM2y: siteIrradiance.value,
     monthlyData: monthlyData.value,
-    lat: lat.value,
-    lng: lng.value
+    lat: siteLat.value, lng: siteLng.value
   })
 }
 
-function clearPolygon() {
-  if (currentPolygon) {
-    currentPolygon.setMap(null)
-    currentPolygon = null
-  }
-  polygonDrawn.value = false
-  roofAreaM2.value = 0
-  irradianceKwhM2y.value = 0
-  monthlyData.value = []
-  pvgisError.value = false
-}
-
-function clearSearch() {
-  addressQuery.value = ''
-  if (searchInput.value) searchInput.value.focus()
-}
+function clearSearch() { addressQuery.value = ''; searchInput.value?.focus() }
 </script>
 
 <style scoped>
