@@ -27,6 +27,23 @@
       </template>
     </div>
 
+    <!-- ── Demo mode banner ──────────────────────────────────────────────── -->
+    <div v-if="currentStep === 0" class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
+      <div class="flex items-start gap-3 flex-1">
+        <span class="text-xl shrink-0">🏭</span>
+        <div>
+          <p class="font-semibold text-amber-900 text-sm">Want to see results straight away?</p>
+          <p class="text-amber-800 text-xs mt-0.5">Load a pre-filled 236 kWp Birmingham warehouse example — no map or API key needed.</p>
+        </div>
+      </div>
+      <button
+        class="shrink-0 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+        @click="loadDemo"
+      >
+        Load demo scenario
+      </button>
+    </div>
+
     <!-- ── Step 0: Map + Roof drawing ────────────────────────────────────── -->
     <div v-if="currentStep === 0" class="space-y-4">
 
@@ -386,6 +403,19 @@ async function downloadPdf() {
   } finally {
     generatingPdf.value = false
   }
+}
+
+function loadDemo() {
+  // Pre-fill a realistic 236 kWp Birmingham warehouse scenario
+  Object.assign(manualInputs, {
+    roofAreaM2:       1500,    // m² — medium warehouse roof
+    compassDirection: 'S',     // south-facing
+    roofTiltDeg:      20,      // shallow ballasted tilt — typical commercial flat
+    postcode:         'B1 1AA',
+    annualBillGbp:    85000,   // £85k/yr — realistic commercial
+    _lat:             52.5     // Birmingham
+  })
+  proceedFromManual()
 }
 
 function restart() {
