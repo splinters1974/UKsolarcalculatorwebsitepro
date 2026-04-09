@@ -1,0 +1,12 @@
+{
+  "name": "UK Solar Calculator Pro",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "postCreateCommand": "npm install",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Vite dev server",
+      "onAutoForward": "openBrowser"
+    }
+  }
+}
